@@ -27,7 +27,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if SECURITY_DEP
+#if true
 
 
 
@@ -37,6 +37,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
@@ -65,73 +66,90 @@ namespace Mono.Net {
 			sock = new Socket (addr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 			sock.Bind (endpoint);
 			sock.Listen (500);
-			SocketAsyncEventArgs args = new SocketAsyncEventArgs ();
-			args.UserToken = this;
-			args.Completed += OnAccept;
-			sock.AcceptAsync (args);
+			//SocketAsyncEventArgs args = new SocketAsyncEventArgs ();
+			//args.UserToken = this;
+			//args.Completed += OnAccept;
+		    sock.BeginAccept(ar => {OnAccept(ar, this);}, sock);// AcceptAsync (args);
 			prefixes = new Hashtable ();
 			unregistered = new Dictionary<HttpConnection, HttpConnection> ();
 		}
 
 		void LoadCertificateAndKey (IPAddress addr, int port)
 		{
-			// Actually load the certificate
-			try {
-				string dirname = Environment.GetFolderPath (Environment.SpecialFolder.ApplicationData);
-				string path = Path.Combine (dirname, ".mono");
-				path = Path.Combine (path, "httplistener");
-				string cert_file = Path.Combine (path, String.Format ("{0}.cer", port));
-				if (!File.Exists (cert_file))
-					return;
-				string pvk_file = Path.Combine (path, String.Format ("{0}.pvk", port));
-				if (!File.Exists (pvk_file))
-					return;
-				cert = new X509Certificate2 (cert_file);
-#if MONO
-                key = PrivateKey.CreateFromFile (pvk_file).RSA;
-#endif
-			} catch {
-				// ignore errors
-			}
+            throw new NotImplementedException("Not ported");
+			//// Actually load the certificate
+			//try {
+			//	string dirname = Environment.GetFolderPath (Environment.SpecialFolder.ApplicationData);
+			//	string path = Path.Combine (dirname, ".mono");
+			//	path = Path.Combine (path, "httplistener");
+			//	string cert_file = Path.Combine (path, String.Format ("{0}.cer", port));
+			//	if (!File.Exists (cert_file))
+			//		return;
+			//	string pvk_file = Path.Combine (path, String.Format ("{0}.pvk", port));
+			//	if (!File.Exists (pvk_file))
+			//		return;
+			//	cert = new X509Certificate2 (cert_file);
+			//	key = PrivateKey.CreateFromFile (pvk_file).RSA;
+			//} catch {
+			//	// ignore errors
+			//}
 		}
 
-		static void OnAccept (object sender, EventArgs e)
+		static void OnAccept (IAsyncResult ar, EndPointListener epl)
 		{
-			SocketAsyncEventArgs args = (SocketAsyncEventArgs) e;
-			EndPointListener epl = (EndPointListener) args.UserToken;
-			Socket accepted = null;
-			if (args.SocketError == SocketError.Success) {
-				accepted = args.AcceptSocket;
-				args.AcceptSocket = null;
-			}
+            var a1 = 5;
+            Socket listener = (Socket)ar.AsyncState;
+		    Socket accepted = null;
 
-			try {
-				if (epl.sock != null)
-					epl.sock.AcceptAsync (args);
-			} catch {
-				if (accepted != null) {
-					try {
-						accepted.Close ();
-					} catch {}
-					accepted = null;
-				}
-			} 
+            //SocketAsyncEventArgs args = (SocketAsyncEventArgs) e;
+            //EndPointListener epl = (EndPointListener) args.UserToken;
+            //Socket accepted = null;
 
-			if (accepted == null)
-				return;
+            //if (args.SocketError == SocketError.Success) {
+            //	accepted = args.AcceptSocket;
+            //	args.AcceptSocket = null;
+            //}
 
-			if (epl.secure && (epl.cert == null || epl.key == null)) {
-				accepted.Close ();
-				return;
-			}
-			HttpConnection conn = new HttpConnection (accepted, epl, epl.secure, epl.cert, epl.key);
-			lock (epl.unregistered) {
-				epl.unregistered [conn] = conn;
-			}
-			conn.BeginReadRequest ();
-		}
+            try
+            {
+                accepted = listener.EndAccept(ar);
+                if (epl.sock != null)
+                {
+                    //epl.sock.AcceptAsync(args);
+                    epl.sock.BeginAccept(a => { OnAccept(a, epl); }, epl.sock);
+                }
+            }
+            catch
+            {
+                if (accepted != null)
+                {
+                    try
+                    {
+                        accepted.Close();
+                    }
+                    catch { }
+                    accepted = null;
+                }
+            }
 
-		internal void RemoveConnection (HttpConnection conn)
+            //if (accepted == null)
+            //	return;
+            if (accepted == null)
+                return;
+            if (epl.secure && (epl.cert == null || epl.key == null))
+            {
+                accepted.Close();
+                return;
+            }
+            HttpConnection conn = new HttpConnection (accepted, epl, epl.secure, epl.cert, epl.key);
+            lock (epl.unregistered)
+            {
+                epl.unregistered[conn] = conn;
+            }
+            conn.BeginReadRequest();
+        }
+
+        internal void RemoveConnection (HttpConnection conn)
 		{
 			lock (unregistered) {
 				unregistered.Remove (conn);

@@ -28,8 +28,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if SECURITY_DEP
-
+#if true
 
 
 using System;
@@ -322,7 +321,8 @@ namespace Mono.Net {
 				// TODO: test if MS has a timeout when doing this
 				try {
 					IAsyncResult ares = InputStream.BeginRead (bytes, 0, length, null, null);
-					if (!ares.IsCompleted && !ares.AsyncWaitHandle.WaitOne (1000))
+                    //BUG: .NET 2.0 no SP - https://www.mikeplate.com/2008/09/26/missingmethodexception-and-waitone
+                    if (!ares.IsCompleted && !ares.AsyncWaitHandle.WaitOne (1000, false))
 						return false;
 					if (InputStream.EndRead (ares) <= 0)
 						return true;

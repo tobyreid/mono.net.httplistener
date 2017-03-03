@@ -26,7 +26,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if SECURITY_DEP
+#if true
 
 using System;
 using System.Globalization;
@@ -478,8 +478,8 @@ namespace Mono.Net {
 
 			if (cookies != null) {
 				foreach (Cookie cookie in cookies)
-                    headers.SetInternal("Set-Cookie", Extensions.ToClientString(cookie));
-            }
+					headers.SetInternal ("Set-Cookie", Extensions.ToClientString(cookie));
+			}
 
 			StreamWriter writer = new StreamWriter (ms, encoding, 256);
 			writer.Write ("HTTP/{0} {1} {2}\r\n", version, status_code, status_description);
