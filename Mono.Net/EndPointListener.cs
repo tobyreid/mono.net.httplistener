@@ -29,7 +29,7 @@
 
 #if SECURITY_DEP
 
-extern alias MonoSecurity;
+
 
 using System;
 using System.IO;
@@ -40,7 +40,6 @@ using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
-using MonoSecurity::Mono.Security.Authenticode;
 
 namespace Mono.Net {
 	sealed class EndPointListener
@@ -88,7 +87,9 @@ namespace Mono.Net {
 				if (!File.Exists (pvk_file))
 					return;
 				cert = new X509Certificate2 (cert_file);
-				key = PrivateKey.CreateFromFile (pvk_file).RSA;
+#if MONO
+                key = PrivateKey.CreateFromFile (pvk_file).RSA;
+#endif
 			} catch {
 				// ignore errors
 			}

@@ -6,7 +6,7 @@ namespace Mono.Net {
 
 	static class Extensions {
 
-		public static string ToClientString (this Cookie cookie)
+		public static string ToClientString (Cookie cookie)
 		{
 			if (cookie == null)
 				throw new ArgumentNullException ("cookie");
